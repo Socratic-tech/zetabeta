@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body class="bg-slate-100 font-sans">
+
+<!-- NAVBAR -->
+<nav class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center gap-6 text-sm font-semibold">
+                <a href="index.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons text-yellow-400">home</span>
+                    Dashboard
+                </a>
+                <a href="entry.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">edit_note</span>
+                    Entry
+                </a>
+                <a href="report.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">analytics</span>
+                    Reports
+                </a>
+                <a href="admin.html" class="flex items-center gap-1 text-yellow-300 font-bold">
+                    <span class="material-icons">admin_panel_settings</span>
+                    Admin
+                </a>
+                <a href="faq.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">help_outline</span>
+                    Help
+                </a>
+            </div>
+            <a href="setup.html" class="text-blue-200 hover:text-white transition flex items-center gap-1">
+                <span class="material-icons">tune</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- AUTH MODAL -->
+<div id="authModal"
+     class="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full text-center">
+        <div class="bg-red-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <span class="material-icons text-red-600 text-3xl">lock</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Admin Access</h2>
+        <input type="password" id="adminPassInput"
+               placeholder="Password"
+               class="w-full p-3 border rounded-lg mb-4 text-center text-lg">
+        <button id="unlockBtn" onclick="verifyPassword()"
+                class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-lg
+                       disabled:opacity-60 disabled:cursor-not-allowed">
+            Unlock Dashboard
+        </button>
+        <p id="authError" class="text-red-600 text-xs font-bold mt-3 hidden">Incorrect Password</p>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main id="adminContent" class="hidden max-w-7xl mx-auto py-10 px-4">
+
+    <!-- CONNECTION STATUS -->
+    <div class="bg-white rounded-xl shadow-sm border p-4 mb-8 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-green-500">check_circle</span>
+            <span class="text-sm font-bold">Database Connected</span>
+        </div>
+        <a href="setup.html" class="text-xs text-blue-600 hover:underline">Reconfigure</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- STUDENT ROSTER -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden h-full flex flex-col">
+
+                <div class="bg-slate-50 px-6 py-4 border-b flex justify-between items-center">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="material-icons text-slate-400">group</span>
+                        Student Roster
+                    </h3>
+                    <button onclick="loadStudents()" class="text-slate-500 hover:text-blue-600">
+                        <span class="material-icons">refresh</span>
+                    </button>
+                </div>
+
+                <div class="p-6 bg-slate-50 border-b border-slate-200">
+                    <div class="mb-4">
+                        <h4 class="font-bold text-slate-700 flex items-center gap-2">
+                            <span class="material-icons text-blue-600">person_add</span>
+                            Add Student
+                        </h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input id="newStudentName" type="text" placeholder="Name"
+                               class="p-2 border rounded bg-white text-sm">
+                        <input id="newStudentGrade" type="text" placeholder="Grade (optional)"
+                               class="p-2 border rounded bg-white text-sm">
+                        <button onclick="addStudentAdmin()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold">
+                            Add Student
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6 flex-1 overflow-auto">
+                    <table class="w-full text-sm text-left text-slate-600">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                            <tr>
+                                <th class="px-4 py-2">Student ID</th>
+                                <th class="px-4 py-2">Name</th>
+                                <th class="px-4 py-2">Grade</th>
+                                <th class="px-4 py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Job Sites + QR Generator -->
+        <div class="flex flex-col gap-8">
+
+            <!-- JOB SITES + TASKS -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col">
+                <div class="bg-slate-50 px-6 py-4 border-b">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="material-icons text-slate-400">work</span>
+                        Job Sites &amp; Tasks
+                    </h3>
+                </div>
+                <div class="p-6 flex-1 flex flex-col">
+                    <!-- Add site -->
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="newSiteInput" placeholder="New Site Name"
+                               class="flex-1 p-2 border rounded text-sm">
+                        <button onclick="addSite()"
+                                class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700 font-bold text-xs">
+                            ADD
+                        </button>
+                    </div>
+                    <!-- Sites accordion -->
+                    <div id="sitesList" class="space-y-2">
+                        <p class="text-xs text-slate-400 text-center py-4">Loading sites…</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR & LINK GENERATOR -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col">
+                <div class="bg-slate-50 px-6 py-4 border-b">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <span class="material-icons text-slate-400">qr_code_2</span>
+                        Share Entry Form
+                    </h3>
+                </div>
+
+                <div class="p-6 flex flex-col gap-4">
+
+                    <p class="text-xs text-slate-500">
+                        Generate a QR code staff can scan to open the entry form — no setup needed on their phone.
+                    </p>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                            Entry Page URL
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="url" id="qrBaseUrl"
+                                   placeholder="https://yoursite.github.io/.../entry.html"
+                                   class="flex-1 p-2 border rounded text-xs font-mono bg-slate-50 focus:outline-none focus:border-blue-400">
+                            <button onclick="useThisDomain()"
+                                    title="Use this page's domain"
+                                    class="text-xs text-blue-600 border border-blue-200 rounded px-2 hover:bg-blue-50 whitespace-nowrap">
+                                Auto-fill
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="generateQR()"
+                            class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition">
+                        <span class="material-icons text-sm">qr_code</span>
+                        Generate QR & Link
+                    </button>
+
+                    <!-- OUTPUT (hidden until generated) -->
+                    <div id="qrOutput" class="hidden space-y-4">
+
+                        <!-- QR Code -->
+                        <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                                Vocational Skills Entry
+                            </p>
+                            <div id="qrcode" class="flex justify-center"></div>
+                            <p class="text-[10px] text-slate-400 mt-3">
+                                Scan with phone camera to open entry form
+                            </p>
+                        </div>
+
+                        <!-- Rotate -->
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p class="text-[11px] text-amber-900 mb-2">
+                                Rotating the entry code instantly disables every QR code
+                                and saved link already in circulation. Use it if a device
+                                is lost or a staff member leaves &mdash; then reprint the
+                                QR codes at every job site.
+                            </p>
+                            <button onclick="rotateEntryToken()"
+                                    class="text-[11px] bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700 transition">
+                                Rotate entry code
+                            </button>
+                        </div>
+
+                        <!-- Generated link -->
+                        <div id="qrLinkBox"
+                             class="bg-slate-50 border rounded-lg p-2 text-[10px] font-mono text-blue-500 break-all">
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex gap-2">
+                            <button onclick="copyQrLink()"
+                                    id="qrCopyBtn"
+                                    class="flex-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg transition">
+                                <span class="material-icons text-sm">content_copy</span>
+                                Copy Link
+                            </button>
+                            <button onclick="printQR()"
+                                    class="flex-1 flex items-center justify-center gap-1 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold py-2 rounded-lg transition">
+                                <span class="material-icons text-sm">print</span>
+                                Print QR
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<script>
+/************************************************************
+ * CONFIG
+ ************************************************************/
+const url = localStorage.getItem("vocational_backend_url");
+
+// The admin password is never fetched to the client any more. The old
+// getAdminConfig route returned it in cleartext to any anonymous caller,
+// which meant the admin panel was open to anyone holding the backend URL
+// -- i.e. everyone who ever scanned the entry QR. That route is deleted.
+// We send the typed password with each request and the server compares.
+//
+// sessionStorage, not localStorage: close the tab, lose the session.
+function adminPass()  { return sessionStorage.getItem("vt_admin_pass") || ""; }
+let entryToken = "";
+
+let qrInstance = null;
+let qrFullUrl = "";
+let allTasks = Object.create(null);
+let currentSites = [];
+
+window.addEventListener("load", () => {
+    if (!url) window.location.href = "setup.html";
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    const passInput = document.getElementById("adminPassInput");
+    if (passInput) {
+        passInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") verifyPassword();
+        });
+    }
+
+    const siteInput = document.getElementById("newSiteInput");
+    if (siteInput) {
+        siteInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") addSite();
+        });
+    }
+});
+
+/************************************************************
+ * SAFE HELPERS
+ ************************************************************/
+function asText(value) {
+    return value === null || value === undefined ? "" : String(value).trim();
+}
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
+}
+
+function clearChildren(element) {
+    while (element.firstChild) element.removeChild(element.firstChild);
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function buildGetUrl(action) {
+    return `${url}?action=${encodeURIComponent(action)}&_=${Date.now()}`;
+}
+
+/**
+ * Was mode:"no-cors", which made every admin write fire-and-forget --
+ * a rejected request looked identical to a successful one. Now that
+ * writes can be refused, the failure has to surface.
+ */
+async function postAction(payload) {
+    if (!url) throw new Error("No database URL configured.");
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ pass: adminPass() }, payload))
+    });
+
+    const json = await res.json();
+
+    if (json.status !== "success") {
+        if (json.code === "denied") {
+            sessionStorage.removeItem("vt_admin_pass");
+            alert("Your admin session is no longer valid. Please sign in again.");
+            location.reload();
+            throw new Error("denied");
+        }
+        throw new Error(json.message || "The server refused that change.");
+    }
+
+    return json;
+}
+
+function makeIcon(name, className = "") {
+    const span = document.createElement("span");
+    span.className = `material-icons ${className}`.trim();
+    span.textContent = name;
+    return span;
+}
+
+function showSitesMessage(message, isError = false) {
+    const list = document.getElementById("sitesList");
+    if (!list) return;
+
+    clearChildren(list);
+
+    const p = document.createElement("p");
+    p.className = `text-xs text-center py-4 ${isError ? "text-red-500 font-bold" : "text-slate-400"}`;
+    p.textContent = message;
+
+    list.appendChild(p);
+}
+
+/************************************************************
+ * AUTH
+ ************************************************************/
+/**
+ * Checks the typed password against the Settings tab.
+ *
+ * Previously this compared against a copy cached in localStorage by
+ * the setup wizard. That produced two bugs: changing the password in
+ * the spreadsheet had no effect until the wizard was re-run on every
+ * device, and any device that had the backend URL but never ran the
+ * wizard (anyone who scanned the entry QR code) had no cached copy at
+ * all, so every password was rejected.
+ */
+async function verifyPassword() {
+    const typed = document.getElementById("adminPassInput").value.trim();
+    const err   = document.getElementById("authError");
+    const btn   = document.getElementById("unlockBtn");
+
+    const originalLabel = btn.textContent.trim();
+    btn.disabled = true;
+    btn.textContent = "Checking\u2026";
+    err.classList.add("hidden");
+
+    const showError = message => {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        err.classList.remove("hidden");
+        err.innerText = message;
+    };
+
+    let json;
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "verifyAdmin", pass: typed })
+        });
+        json = await res.json();
+    } catch (fetchErr) {
+        console.warn("Couldn't reach the spreadsheet:", fetchErr);
+        return showError("Can't reach the spreadsheet. Check your connection.");
+    }
+
+    if (json.status !== "success") {
+        return showError(json.message || "Incorrect password.");
+    }
+
+    // Held for this tab only. There is no offline fallback any more --
+    // the previous cached copy let a stale device unlock the panel, and
+    // it had to be seeded by a route that leaked the password.
+    sessionStorage.setItem("vt_admin_pass", typed);
+    entryToken = json.entryToken || "";
+
+    document.getElementById("authModal").classList.add("hidden");
+    document.getElementById("adminContent").classList.remove("hidden");
+
+    loadStudents();
+    loadSites();
+}
+
+/************************************************************
+ * STUDENTS
+ ************************************************************/
+async function loadStudents() {
+    try {
+        const json = { data: (await postAction({ action: "adminBootstrap" })).students };
+
+        const tbody = document.getElementById("studentTableBody");
+        tbody.innerHTML = "";
+
+        (json.data || []).forEach(s => {
+            const active = s.active === true || String(s.active).toLowerCase() === "true";
+
+            tbody.innerHTML += `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="px-4 py-3 font-mono text-xs">${escapeHTML(s.student_id)}</td>
+                    <td class="px-4 py-3 font-medium">${escapeHTML(s.name)}</td>
+                    <td class="px-4 py-3">${escapeHTML(s.grade || "")}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-[10px] font-bold rounded-full
+                              ${active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}">
+                            ${active ? "Active" : "Inactive"}
+                        </span>
+                    </td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error("Error loading students:", err);
+    }
+}
+
+async function addStudentAdmin() {
+    const nameInput = document.getElementById("newStudentName");
+    const gradeInput = document.getElementById("newStudentGrade");
+
+    const name = nameInput.value.trim();
+    const grade = gradeInput.value.trim();
+
+    if (!name) {
+        alert("Please enter a student name.");
+        return;
+    }
+
+    try {
+        await postAction({
+            action: "addStudent",
+            name,
+            grade
+        });
+
+        nameInput.value = "";
+        gradeInput.value = "";
+
+        await delay(600);
+        loadStudents();
+    } catch (err) {
+        console.error("Error adding student:", err);
+        alert("Could not add the student. Check the browser console and Apps Script deployment.");
+    }
+}
+
+/************************************************************
+ * SITES + TASKS
+ ************************************************************/
+async function loadSites(openSiteName = "") {
+    if (!url) return;
+
+    try {
+        showSitesMessage("Loading sites…");
+
+        const boot = await postAction({ action: "adminBootstrap" });
+        const siteJson = { data: boot.sites };
+        const taskJson = { data: boot.tasks };
+
+        currentSites = (siteJson.data || [])
+            .map(asText)
+            .filter(Boolean)
+            .filter((site, index, arr) =>
+                arr.findIndex(s => s.toLowerCase() === site.toLowerCase()) === index
+            )
+            .sort((a, b) => a.localeCompare(b));
+
+        allTasks = Object.create(null);
+
+        (taskJson.data || []).forEach(t => {
+            const siteName = asText(t.site_name);
+            const taskName = asText(t.task_name);
+
+            if (!siteName || !taskName) return;
+
+            if (!allTasks[siteName]) allTasks[siteName] = [];
+
+            if (!allTasks[siteName].includes(taskName)) {
+                allTasks[siteName].push(taskName);
+            }
+        });
+
+        renderSites(openSiteName);
+    } catch (err) {
+        console.error("Error loading sites:", err);
+        showSitesMessage("Error loading sites. Check the browser console.", true);
+    }
+}
+
+function renderSites(openSiteName = "") {
+    const list = document.getElementById("sitesList");
+    if (!list) return;
+
+    clearChildren(list);
+
+    if (currentSites.length === 0) {
+        showSitesMessage("No sites yet — add one above.");
+        return;
+    }
+
+    currentSites.forEach(siteName => {
+        const tasks = allTasks[siteName] || [];
+        const card = createSiteCard(siteName, tasks, siteName === openSiteName);
+        list.appendChild(card);
+    });
+}
+
+function createSiteCard(siteName, tasks, startOpen = false) {
+    const card = document.createElement("div");
+    card.className = "border rounded-lg overflow-hidden";
+
+    const header = document.createElement("div");
+    header.className = "flex items-center justify-between bg-slate-50 px-3 py-2";
+
+    const toggleButton = document.createElement("button");
+    toggleButton.type = "button";
+    toggleButton.className = "flex items-center gap-2 flex-1 text-left";
+
+    const chevron = makeIcon("chevron_right", "text-sm text-slate-400 transition-transform");
+    if (startOpen) chevron.style.transform = "rotate(90deg)";
+
+    const siteLabel = document.createElement("span");
+    siteLabel.className = "text-sm font-semibold text-slate-700";
+    siteLabel.textContent = siteName;
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "text-xs text-slate-400 ml-1";
+    countLabel.textContent = formatTaskCount(tasks.length);
+
+    toggleButton.appendChild(chevron);
+    toggleButton.appendChild(siteLabel);
+    toggleButton.appendChild(countLabel);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "text-slate-300 hover:text-red-500 ml-2";
+    deleteButton.title = `Delete ${siteName}`;
+    deleteButton.appendChild(makeIcon("delete", "text-sm"));
+
+    deleteButton.addEventListener("click", event => {
+        event.stopPropagation();
+        deleteSite(siteName);
+    });
+
+    header.appendChild(toggleButton);
+    header.appendChild(deleteButton);
+
+    const panel = document.createElement("div");
+    panel.className = "bg-white px-3 pb-3 pt-2 border-t";
+
+    if (!startOpen) {
+        panel.classList.add("hidden");
+    }
+
+    toggleButton.addEventListener("click", () => {
+        const isHidden = panel.classList.toggle("hidden");
+        chevron.style.transform = isHidden ? "" : "rotate(90deg)";
+    });
+
+    const taskList = document.createElement("ul");
+    taskList.className = "space-y-1 mb-3";
+
+    renderTaskList(taskList, siteName, countLabel);
+
+    const addRow = document.createElement("div");
+    addRow.className = "flex gap-2";
+
+    const taskInput = document.createElement("input");
+    taskInput.type = "text";
+    taskInput.placeholder = "New task name…";
+    taskInput.className = "flex-1 p-1.5 border rounded text-xs";
+
+    taskInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            addTask(siteName, taskInput);
+        }
+    });
+
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-2 rounded";
+    addButton.textContent = "ADD";
+
+    addButton.addEventListener("click", () => {
+        addTask(siteName, taskInput);
+    });
+
+    addRow.appendChild(taskInput);
+    addRow.appendChild(addButton);
+
+    panel.appendChild(taskList);
+    panel.appendChild(addRow);
+
+    card.appendChild(header);
+    card.appendChild(panel);
+
+    return card;
+}
+
+function renderTaskList(taskList, siteName, countLabel) {
+    clearChildren(taskList);
+
+    const tasks = allTasks[siteName] || [];
+    countLabel.textContent = formatTaskCount(tasks.length);
+
+    if (tasks.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "text-xs text-slate-400 italic py-1";
+        empty.textContent = "No tasks yet — add one below.";
+        taskList.appendChild(empty);
+        return;
+    }
+
+    tasks.forEach(taskName => {
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between bg-slate-50 rounded px-2 py-1";
+
+        const label = document.createElement("span");
+        label.className = "text-xs text-slate-700";
+        label.textContent = taskName;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "text-slate-300 hover:text-red-500";
+        deleteButton.title = `Delete ${taskName}`;
+        deleteButton.appendChild(makeIcon("close", "text-sm"));
+
+        deleteButton.addEventListener("click", () => {
+            deleteTask(siteName, taskName);
+        });
+
+        li.appendChild(label);
+        li.appendChild(deleteButton);
+
+        taskList.appendChild(li);
+    });
+}
+
+function formatTaskCount(count) {
+    return `(${count} task${count !== 1 ? "s" : ""})`;
+}
+
+async function addSite() {
+    const input = document.getElementById("newSiteInput");
+    const name = input.value.trim();
+
+    if (!name) return;
+
+    const alreadyExists = currentSites.some(site => site.toLowerCase() === name.toLowerCase());
+
+    if (alreadyExists) {
+        alert(`"${name}" already exists.`);
+        return;
+    }
+
+    try {
+        await postAction({
+            action: "addSite",
+            site_name: name
+        });
+
+        input.value = "";
+
+        currentSites.push(name);
+        currentSites.sort((a, b) => a.localeCompare(b));
+
+        if (!allTasks[name]) allTasks[name] = [];
+
+        renderSites(name);
+
+        await delay(600);
+        loadSites(name);
+    } catch (err) {
+        console.error("Error adding site:", err);
+        alert("Could not add the site. Check the browser console and Apps Script deployment.");
+    }
+}
+
+async function deleteSite(name) {
+    if (!confirm(`Delete "${name}" and all its tasks?`)) return;
+
+    try {
+        await postAction({
+            action: "deleteSite",
+            site_name: name
+        });
+
+        currentSites = currentSites.filter(site => site !== name);
+        delete allTasks[name];
+
+        renderSites();
+
+        await delay(600);
+        loadSites();
+    } catch (err) {
+        console.error("Error deleting site:", err);
+        alert("Could not delete the site. Check the browser console and Apps Script deployment.");
+    }
+}
+
+async function addTask(siteName, input) {
+    const taskName = input.value.trim();
+
+    if (!taskName) return;
+
+    try {
+        await postAction({
+            action: "addTask",
+            site_name: siteName,
+            task_name: taskName
+        });
+
+        input.value = "";
+
+        if (!allTasks[siteName]) {
+            allTasks[siteName] = [];
+        }
+
+        if (!allTasks[siteName].includes(taskName)) {
+            allTasks[siteName].push(taskName);
+        }
+
+        renderSites(siteName);
+
+        await delay(600);
+        loadSites(siteName);
+    } catch (err) {
+        console.error("Error adding task:", err);
+        alert("Could not add the task. Check the browser console and Apps Script deployment.");
+    }
+}
+
+async function deleteTask(siteName, taskName) {
+    try {
+        await postAction({
+            action: "deleteTask",
+            site_name: siteName,
+            task_name: taskName
+        });
+
+        if (allTasks[siteName]) {
+            allTasks[siteName] = allTasks[siteName].filter(task => task !== taskName);
+        }
+
+        renderSites(siteName);
+
+        await delay(600);
+        loadSites(siteName);
+    } catch (err) {
+        console.error("Error deleting task:", err);
+        alert("Could not delete the task. Check the browser console and Apps Script deployment.");
+    }
+}
+
+/************************************************************
+ * QR GENERATOR
+ ************************************************************/
+function useThisDomain() {
+    const base = window.location.href.replace(/[^/]*$/, "entry.html");
+    document.getElementById("qrBaseUrl").value = base;
+}
+
+function generateQR() {
+    const base = document.getElementById("qrBaseUrl").value.trim();
+
+    if (!base) {
+        alert("Enter the entry page URL first.");
+        return;
+    }
+
+    if (!url) {
+        alert("No database URL configured.");
+        return;
+    }
+
+    if (!entryToken) {
+        alert("No entry token is set. Re-run initialSetup() in the Apps Script editor, then sign in here again.");
+        return;
+    }
+
+    // The token is what makes this QR safe to tape to a wall. It grants
+    // the entry form and nothing else -- whoever photographs it can
+    // submit an entry and cannot read a single score.
+    const separator = base.includes("?") ? "&" : "?";
+    qrFullUrl = `${base}${separator}db=${encodeURIComponent(url)}&t=${encodeURIComponent(entryToken)}`;
+
+    document.getElementById("qrLinkBox").textContent = qrFullUrl;
+
+    const qrDiv = document.getElementById("qrcode");
+    qrDiv.innerHTML = "";
+
+    qrInstance = new QRCode(qrDiv, {
+        text: qrFullUrl,
+        width: 180,
+        height: 180,
+        colorDark: "#1e293b",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    document.getElementById("qrOutput").classList.remove("hidden");
+}
+
+async function rotateEntryToken() {
+    if (!confirm(
+        "Rotate the entry code?\n\n" +
+        "Every QR code and saved entry link currently in use will stop working " +
+        "immediately. Paras in the field will see an error until they scan a new code.\n\n" +
+        "You will need to reprint the QR code for every job site."
+    )) return;
+
+    try {
+        const json = await postAction({ action: "rotateEntryToken" });
+        entryToken = json.entryToken;
+        generateQR();
+        alert("Entry code rotated. Reprint and redistribute the new QR code.");
+    } catch (err) {
+        alert("Could not rotate the entry code: " + err.message);
+    }
+}
+
+function copyQrLink() {
+    if (!qrFullUrl) return;
+
+    const markCopied = () => {
+        const btn = document.getElementById("qrCopyBtn");
+
+        btn.innerHTML = `<span class="material-icons text-sm">check</span> Copied!`;
+        btn.classList.replace("bg-blue-600", "bg-green-600");
+
+        setTimeout(() => {
+            btn.innerHTML = `<span class="material-icons text-sm">content_copy</span> Copy Link`;
+            btn.classList.replace("bg-green-600", "bg-blue-600");
+        }, 2000);
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard
+            .writeText(qrFullUrl)
+            .then(markCopied)
+            .catch(() => fallbackCopy(qrFullUrl, markCopied));
+    } else {
+        fallbackCopy(qrFullUrl, markCopied);
+    }
+}
+
+function fallbackCopy(text, onSuccess) {
+    const textarea = document.createElement("textarea");
+
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        document.execCommand("copy");
+        if (onSuccess) onSuccess();
+    } catch (err) {
+        console.error("Copy failed:", err);
+        alert("Could not copy automatically. Select and copy the generated link manually.");
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
+function printQR() {
+    const canvas = document.querySelector("#qrcode canvas");
+
+    if (!canvas) {
+        alert("Generate a QR code first.");
+        return;
+    }
+
+    const win = window.open("", "_blank");
+
+    if (!win) {
+        alert("Popup blocked. Allow popups for this site, then try again.");
+        return;
+    }
+
+    win.document.write(`
+        <html>
+        <head>
+            <title>QR Code — Vocational Entry</title>
+            <style>
+                body {
+                    font-family: sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    background: white;
+                }
+
+                .wrap {
+                    text-align: center;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 40px;
+                    max-width: 320px;
+                }
+
+                p {
+                    margin: 8px 0;
+                    color: #64748b;
+                    font-size: 13px;
+                }
+
+                img {
+                    display: block;
+                    margin: 0 auto;
+                }
+
+                .label {
+                    font-size: 10px;
+                    font-weight: bold;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    color: #94a3b8;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <p class="label">Vocational Skills Entry</p>
+                <img src="${canvas.toDataURL()}" width="220" height="220">
+                <p>Scan with your phone camera<br>to open the entry form</p>
+            </div>
+        </body>
+        </html>
+    `);
+
+    win.document.close();
+    win.focus();
+
+    setTimeout(() => win.print(), 400);
+}
+</script>
+
+</body>
+</html>
