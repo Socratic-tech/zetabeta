@@ -23,6 +23,39 @@
         thead { display: table-header-group; }
         tfoot { display: table-footer-group; }
     </style>
+<script>
+/************************************************************
+ * INSTANCE NAMESPACE
+ *
+ * GitHub Pages serves every repo under one origin, and localStorage
+ * is scoped to the origin, not the path. Without this, the beta and
+ * production copies fight over the same storage slots -- scan beta's
+ * QR and the device silently repoints, with no visible difference.
+ *
+ * TO PROMOTE THIS BUILD TO PRODUCTION: set VT_ENV to "".
+ * That is the whole diff. It drops the prefix and the banner.
+ ************************************************************/
+const VT_ENV = "beta";
+
+function vtKey(name) { return VT_ENV ? VT_ENV + ":" + name : name; }
+
+if (VT_ENV) {
+    document.addEventListener("DOMContentLoaded", function () {
+        var css = document.createElement("style");
+        css.textContent =
+            ".vt-env-banner{position:sticky;top:0;z-index:9999;background:#b45309;" +
+            "color:#fff;font:600 12px/1.3 ui-sans-serif,system-ui;padding:8px 12px;" +
+            "text-align:center;letter-spacing:.05em;text-transform:uppercase}" +
+            "@media print{.vt-env-banner{display:none!important}}";
+        document.head.appendChild(css);
+
+        var bar = document.createElement("div");
+        bar.className = "vt-env-banner";
+        bar.textContent = VT_ENV + " instance \u2014 test data only, not production";
+        document.body.prepend(bar);
+    });
+}
+</script>
 </head>
 
 <body class="flex flex-col min-h-screen">
@@ -246,7 +279,7 @@ let allTasks   = {}; // { site_name: [task, ...] }
 let students   = {};
 let charts     = { skills: null, tasks: null };
 
-const API_URL = localStorage.getItem("vocational_backend_url");
+const API_URL = localStorage.getItem(vtKey("vocational_backend_url"));
 
 /************************************************************
  * DATE HELPERS
@@ -275,7 +308,7 @@ function fmt(d) { return d.toLocaleDateString("en-US"); }
  * must not retain report access after the window closes.
  ************************************************************/
 function getViewerCode() {
-    return sessionStorage.getItem("vt_viewer_code") || "";
+    return sessionStorage.getItem(vtKey("vt_viewer_code")) || "";
 }
 
 function showGate(msg) {
@@ -327,7 +360,7 @@ async function verifyViewerCode() {
         const json = await postAction("verifyViewer", { code: code });
 
         if (json.status === "success") {
-            sessionStorage.setItem("vt_viewer_code", code);
+            sessionStorage.setItem(vtKey("vt_viewer_code"), code);
             hideGate();
             document.getElementById("loadingIndicator").classList.remove("hidden");
             loadReportData();
@@ -372,7 +405,7 @@ async function loadReportData() {
 
         // A revoked or edited code shows up here, not just at unlock time.
         if (eJson.status !== "success") {
-            sessionStorage.removeItem("vt_viewer_code");
+            sessionStorage.removeItem(vtKey("vt_viewer_code"));
             return showGate(eJson.message || "Your access code is no longer valid.");
         }
 
