@@ -7,6 +7,39 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/************************************************************
+ * INSTANCE NAMESPACE
+ *
+ * GitHub Pages serves every repo under one origin, and localStorage
+ * is scoped to the origin, not the path. Without this, the beta and
+ * production copies fight over the same storage slots -- scan beta's
+ * QR and the device silently repoints, with no visible difference.
+ *
+ * TO PROMOTE THIS BUILD TO PRODUCTION: set VT_ENV to "".
+ * That is the whole diff. It drops the prefix and the banner.
+ ************************************************************/
+const VT_ENV = "beta";
+
+function vtKey(name) { return VT_ENV ? VT_ENV + ":" + name : name; }
+
+if (VT_ENV) {
+    document.addEventListener("DOMContentLoaded", function () {
+        var css = document.createElement("style");
+        css.textContent =
+            ".vt-env-banner{position:sticky;top:0;z-index:9999;background:#b45309;" +
+            "color:#fff;font:600 12px/1.3 ui-sans-serif,system-ui;padding:8px 12px;" +
+            "text-align:center;letter-spacing:.05em;text-transform:uppercase}" +
+            "@media print{.vt-env-banner{display:none!important}}";
+        document.head.appendChild(css);
+
+        var bar = document.createElement("div");
+        bar.className = "vt-env-banner";
+        bar.textContent = VT_ENV + " instance \u2014 test data only, not production";
+        document.body.prepend(bar);
+    });
+}
+</script>
 </head>
 
 <body class="bg-slate-100 font-sans">
@@ -254,7 +287,7 @@
 /************************************************************
  * CONFIG
  ************************************************************/
-const url = localStorage.getItem("vocational_backend_url");
+const url = localStorage.getItem(vtKey("vocational_backend_url"));
 
 // The admin password is never fetched to the client any more. The old
 // getAdminConfig route returned it in cleartext to any anonymous caller,
@@ -263,7 +296,7 @@ const url = localStorage.getItem("vocational_backend_url");
 // We send the typed password with each request and the server compares.
 //
 // sessionStorage, not localStorage: close the tab, lose the session.
-function adminPass()  { return sessionStorage.getItem("vt_admin_pass") || ""; }
+function adminPass()  { return sessionStorage.getItem(vtKey("vt_admin_pass")) || ""; }
 let entryToken = "";
 
 let qrInstance = null;
@@ -338,7 +371,7 @@ async function postAction(payload) {
 
     if (json.status !== "success") {
         if (json.code === "denied") {
-            sessionStorage.removeItem("vt_admin_pass");
+            sessionStorage.removeItem(vtKey("vt_admin_pass"));
             alert("Your admin session is no longer valid. Please sign in again.");
             location.reload();
             throw new Error("denied");
@@ -419,7 +452,7 @@ async function verifyPassword() {
     // Held for this tab only. There is no offline fallback any more --
     // the previous cached copy let a stale device unlock the panel, and
     // it had to be seeded by a route that leaked the password.
-    sessionStorage.setItem("vt_admin_pass", typed);
+    sessionStorage.setItem(vtKey("vt_admin_pass"), typed);
     entryToken = json.entryToken || "";
 
     document.getElementById("authModal").classList.add("hidden");
