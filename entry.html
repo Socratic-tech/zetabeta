@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vocational Entry</title>
+    <title>New Entry — Vocational Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
@@ -50,14 +50,14 @@ if (VT_ENV) {
 <nav class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4">
         <div class="flex justify-between h-16 items-center">
-            <div class="flex items-center gap-6 text-sm font-semibold">
+            <div class="flex items-center gap-4 sm:gap-6 text-sm font-semibold overflow-x-auto">
                 <a href="index.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
                     <span class="material-icons text-yellow-400">home</span>
                     Dashboard
                 </a>
                 <a href="#" class="flex items-center gap-1 text-yellow-300 font-bold">
                     <span class="material-icons">edit_note</span>
-                    Entry
+                    <span class="hidden sm:inline">Entry</span>
                 </a>
                 <a href="report.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
                     <span class="material-icons">analytics</span>
@@ -86,8 +86,8 @@ if (VT_ENV) {
             Please ask your program coordinator for the correct QR code or link.
         </p>
         <div class="bg-slate-50 rounded-lg p-4 text-left text-xs text-slate-400 font-mono break-all">
-            Expected URL format:<br>
-            <span class="text-blue-500">entry.html?db=https://script.google.com/...</span>
+            Secure link format:<br>
+            <span class="text-blue-700">entry.html?db=https://script.google.com/...&amp;t=...</span>
         </div>
     </div>
 </div>
@@ -98,7 +98,8 @@ if (VT_ENV) {
     <!-- DB source badge -->
     <div id="dbBadge" class="mb-3 flex items-center gap-2 text-xs text-slate-400">
         <span class="material-icons text-sm text-green-500">cloud_done</span>
-        <span id="dbBadgeText">Connected</span>
+        <span id="dbBadgeText">Secure entry access</span>
+        <span class="ml-auto text-green-700 font-bold">Entry only · no report access</span>
     </div>
 
     <form id="entryForm" onsubmit="submitEntry(event)" class="space-y-6">
@@ -296,6 +297,12 @@ window.onload = () => {
 
     document.getElementById("mainForm").classList.remove("hidden");
     document.getElementById("dateInput").valueAsDate = new Date();
+
+    const savedEvaluator = localStorage.getItem(vtKey("vt_evaluator_name"));
+    if (savedEvaluator) {
+        document.getElementById("evaluatorInput").value = savedEvaluator;
+    }
+
     renderSkills();
     loadDropdowns();
 };
@@ -412,6 +419,8 @@ async function loadDropdowns() {
         const boot = await postAction("entryBootstrap", { token: ENTRY_TOKEN });
 
         if (boot.status !== "success") {
+            localStorage.removeItem(vtKey("vt_entry_token"));
+            ENTRY_TOKEN = null;
             return showLinkExpired(boot.message || "This entry link is no longer valid.");
         }
 
@@ -422,9 +431,14 @@ async function loadDropdowns() {
         // Students
         const sSel = document.getElementById("studentSelect");
         sSel.innerHTML = `<option value="">Select Student…</option>`;
-        sJson.data.forEach(s => {
-            sSel.innerHTML += `<option value="${s.student_id}">${s.name}</option>`;
-        });
+        (sJson.data || [])
+            .filter(s => s.active !== false && String(s.active).toLowerCase() !== "false")
+            .forEach(s => {
+                const option = document.createElement("option");
+                option.value = s.student_id;
+                option.textContent = s.name;
+                sSel.appendChild(option);
+            });
 
         // Sites
         const siteSel = document.getElementById("siteSelect");
@@ -475,12 +489,15 @@ async function submitEntry(e) {
         }
     });
 
+    const evaluatorName = document.getElementById("evaluatorInput").value.trim();
+    localStorage.setItem(vtKey("vt_evaluator_name"), evaluatorName);
+
     const payload = {
         token: ENTRY_TOKEN,
         student_id: document.getElementById("studentSelect").value,
         job_site:   document.getElementById("siteSelect").value,
         date:       document.getElementById("dateInput").value,
-        evaluator:  document.getElementById("evaluatorInput").value,
+        evaluator:  evaluatorName,
         comments:   document.getElementById("commentsInput").value,
         scores
     };
@@ -493,9 +510,19 @@ async function submitEntry(e) {
         const json = await postAction("addEntry", payload);
 
         if (json.status !== "success") {
+            if (json.code === "denied") {
+                localStorage.removeItem(vtKey("vt_entry_token"));
+                ENTRY_TOKEN = null;
+            }
+
             alert(json.message || "Save failed. Your entry was NOT recorded.");
             btn.disabled = false;
             btn.innerHTML = original;
+
+            if (json.code === "denied") {
+                showLinkExpired("This entry link has expired or was rotated. Scan the current QR code from your coordinator.");
+            }
+
             return;
         }
 
