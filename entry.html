@@ -46,49 +46,45 @@ if (VT_ENV) {
 
 <body class="bg-slate-100 text-slate-900 font-sans pb-20">
 
-<!-- NAVBAR -->
-<nav class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
-    <div class="max-w-5xl mx-auto px-4">
-        <div class="flex justify-between h-16 items-center">
-            <div class="flex items-center gap-4 sm:gap-6 text-sm font-semibold overflow-x-auto">
-                <a href="index.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
-                    <span class="material-icons text-yellow-400">home</span>
-                    Dashboard
-                </a>
-                <a href="#" class="flex items-center gap-1 text-yellow-300 font-bold">
-                    <span class="material-icons">edit_note</span>
-                    <span class="hidden sm:inline">Entry</span>
-                </a>
-                <a href="report.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
-                    <span class="material-icons">analytics</span>
-                    Reports
-                </a>
-                <a href="admin.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
-                    <span class="material-icons">admin_panel_settings</span>
-                    Admin
-                </a>
-                <a href="faq.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
-                    <span class="material-icons">help_outline</span>
-                    Help
-                </a>
+<!-- ENTRY-ONLY HEADER -->
+<header class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-3xl mx-auto px-4">
+        <div class="min-h-16 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 font-bold">
+                <span class="material-icons text-yellow-400">edit_note</span>
+                <span>Vocational Skills Entry</span>
             </div>
+
+            <a href="faq.html?mode=entry"
+               class="flex items-center gap-1 text-blue-100 hover:text-white text-sm font-semibold">
+                <span class="material-icons text-lg">help_outline</span>
+                Help
+            </a>
         </div>
     </div>
-</nav>
+</header>
 
-<!-- NOT CONFIGURED MESSAGE -->
+<!-- SECURE LINK REQUIRED -->
 <div id="notConfigured" class="hidden max-w-xl mx-auto mt-16 px-6">
-    <div class="bg-white rounded-2xl shadow-md border border-red-100 p-8 text-center">
-        <span class="material-icons text-red-400 text-5xl mb-4 block">link_off</span>
-        <h2 class="text-xl font-bold text-slate-800 mb-2">Database Not Configured</h2>
-        <p class="text-slate-500 text-sm mb-6">
-            This form needs a special link to connect to the data system.<br>
-            Please ask your program coordinator for the correct QR code or link.
+    <div class="bg-white rounded-2xl shadow-md border border-blue-100 p-8 text-center">
+        <span class="material-icons text-blue-600 text-5xl mb-4 block">qr_code_scanner</span>
+
+        <h2 id="entryAccessTitle" class="text-2xl font-bold text-slate-900 mb-3">
+            Scan Your Job-Site QR Code
+        </h2>
+
+        <p id="entryAccessMessage" class="text-slate-600 text-base leading-relaxed mb-5">
+            This entry form opens from the secure QR code provided by your program coordinator.
         </p>
-        <div class="bg-slate-50 rounded-lg p-4 text-left text-xs text-slate-400 font-mono break-all">
-            Secure link format:<br>
-            <span class="text-blue-700">entry.html?db=https://script.google.com/...&amp;t=...</span>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
+            <strong>Already used this device before?</strong><br>
+            If the saved entry code has expired, scan the current QR code again.
         </div>
+
+        <p class="text-sm text-slate-500 mt-5">
+            Need help? Contact your program coordinator.
+        </p>
     </div>
 </div>
 
@@ -262,12 +258,23 @@ async function postAction(action, payload) {
     return await res.json();
 }
 
-function showLinkExpired(msg) {
+function showLinkExpired(msg, title) {
     const box = document.getElementById("notConfigured");
     box.classList.remove("hidden");
     box.scrollIntoView({ behavior: "smooth" });
-    const p = box.querySelector("p");
-    if (p) p.textContent = msg;
+
+    const titleEl = document.getElementById("entryAccessTitle");
+    const messageEl = document.getElementById("entryAccessMessage");
+
+    if (titleEl) {
+        titleEl.textContent = title || "Scan Your Job-Site QR Code";
+    }
+
+    if (messageEl) {
+        messageEl.textContent =
+            msg || "This entry form opens from the secure QR code provided by your program coordinator.";
+    }
+
     document.getElementById("mainForm").classList.add("hidden");
 }
 
@@ -278,15 +285,18 @@ window.onload = () => {
     API_URL = resolveApiUrl();
 
     if (!API_URL) {
-        document.getElementById("notConfigured").classList.remove("hidden");
-        return;
+        return showLinkExpired(
+            "This device has not been connected to the job-site entry form yet. Scan the QR code provided by your program coordinator.",
+            "Scan Your Job-Site QR Code"
+        );
     }
 
     ENTRY_TOKEN = resolveEntryToken();
 
     if (!ENTRY_TOKEN) {
         return showLinkExpired(
-            "This link is missing its access code. Scan the QR code your coordinator provided."
+            "This device does not have a valid entry code. Scan the current job-site QR code provided by your program coordinator.",
+            "Secure Entry Link Required"
         );
     }
 
@@ -421,7 +431,10 @@ async function loadDropdowns() {
         if (boot.status !== "success") {
             localStorage.removeItem(vtKey("vt_entry_token"));
             ENTRY_TOKEN = null;
-            return showLinkExpired(boot.message || "This entry link is no longer valid.");
+            return showLinkExpired(
+                boot.message || "This entry link is no longer valid. Scan the current job-site QR code.",
+                "Entry Link Expired"
+            );
         }
 
         const sJson = { data: boot.students };
@@ -520,7 +533,10 @@ async function submitEntry(e) {
             btn.innerHTML = original;
 
             if (json.code === "denied") {
-                showLinkExpired("This entry link has expired or was rotated. Scan the current QR code from your coordinator.");
+                showLinkExpired(
+                    "This entry link has expired or was replaced. Scan the current job-site QR code from your program coordinator.",
+                    "Entry Link Expired"
+                );
             }
 
             return;
