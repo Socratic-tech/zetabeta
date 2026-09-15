@@ -268,7 +268,7 @@ if (VT_ENV) {
                 <p class="font-semibold text-slate-700">Set your Admin password in the Settings sheet</p>
             </div>
             <p class="text-sm text-slate-500 ml-8 mb-3">
-                Click the <strong>Settings</strong> tab in your spreadsheet. Row 1 is the <code class="bg-slate-100 px-1 rounded text-indigo-700">key</code> / <code class="bg-slate-100 px-1 rounded text-indigo-700">value</code> header, and row 2 holds the default password <code class="bg-slate-100 px-1 rounded text-indigo-700">voc123</code> in <strong>cell B2</strong>. Change it to a password your admin team will use to reach the Admin panel.
+                Click the <strong>Settings</strong> tab in your spreadsheet. <code class="bg-slate-100 px-1 rounded text-indigo-700">initialSetup()</code> generated a random admin password for this instance and printed it in the <strong>Execution log</strong> at the bottom of the Apps Script editor. Write it down now. You can see it again any time by running <code class="bg-slate-100 px-1 rounded text-indigo-700">showCredentials()</code> from the function dropdown. It also lives in the <strong>Settings</strong> tab, in column B beside the row labelled <code class="bg-slate-100 px-1 rounded text-indigo-700">password</code> &mdash; change it there if you would rather use one of your own. Go by the label in column A, never a row number.
             </p>
             <div class="callout-warn p-3 text-sm text-amber-800 ml-8">
                 <strong>Important:</strong> Change this before sharing the system with anyone. The password is stored in plain text in the sheet — keep the spreadsheet access restricted to admin staff only.
@@ -327,6 +327,67 @@ if (VT_ENV) {
             Connect
         </button>
         <p id="connectStatus" class="text-sm mt-3 font-bold hidden"></p>
+
+        <!-- CLAIM: shown after the backend answers -->
+        <div id="claimPanel" class="hidden mt-6 pt-6 border-t">
+            <h3 class="font-bold text-lg mb-2">Claim your admin password</h3>
+            <p class="text-slate-600 text-sm mb-4">
+                When you ran <code class="bg-slate-100 px-1 rounded text-indigo-700">initialSetup()</code>,
+                the Execution log printed a <strong>setup claim code</strong>. Paste it here and
+                this instance will generate your admin password.
+            </p>
+
+            <input id="claimInput" type="text" autocomplete="off"
+                   placeholder="abcd-efgh"
+                   class="w-full p-3 border rounded-lg bg-slate-50 mb-3 font-mono text-sm">
+            <button id="claimBtn" onclick="claimSetup()"
+                    class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
+                Claim password
+            </button>
+            <p id="claimStatus" class="text-sm mt-3 font-bold text-red-600 hidden"></p>
+
+            <p class="text-xs text-slate-400 mt-4">
+                Already set this instance up before?
+                <button onclick="nextStep(5)" class="underline hover:text-slate-600">Skip this step</button>.
+            </p>
+        </div>
+
+        <!-- REVEAL: the one and only time this password is displayed -->
+        <div id="claimResult" class="hidden mt-6 pt-6 border-t">
+            <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-icons text-amber-600">warning</span>
+                    <h3 class="font-bold text-amber-900">Copy this now &mdash; it will not be shown again</h3>
+                </div>
+                <p class="text-sm text-amber-900 mb-4">
+                    This password is stored as a one-way hash. Nobody can read it back out of
+                    the spreadsheet, and this page cannot show it to you a second time. If it
+                    is lost, an administrator has to run
+                    <code class="bg-amber-100 px-1 rounded">resetAdminPassword()</code> in the
+                    Apps Script editor to issue a new one.
+                </p>
+
+                <div id="claimPassword"
+                     class="bg-white border-2 border-amber-300 rounded-lg p-4 text-center font-mono text-2xl tracking-widest text-slate-800 select-all mb-3"></div>
+
+                <button id="claimCopyBtn" onclick="copyClaimPassword()"
+                        class="bg-amber-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-amber-700 transition">
+                    <span class="material-icons align-middle text-sm mr-1">content_copy</span>
+                    Copy password
+                </button>
+            </div>
+
+            <label class="flex items-start gap-2 mb-4 text-sm text-slate-700 cursor-pointer">
+                <input id="claimConfirm" type="checkbox" class="mt-1"
+                       onchange="document.getElementById('claimContinue').disabled = !this.checked">
+                <span>I have saved this password somewhere safe.</span>
+            </label>
+
+            <button id="claimContinue" onclick="nextStep(5)" disabled
+                    class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                Continue
+            </button>
+        </div>
     </div>
 
     <!-- ───────────────────────────────────────────
@@ -364,7 +425,7 @@ if (VT_ENV) {
                 Admin Password Reminder
             </h3>
             <p class="text-sm text-yellow-800 mb-1">
-                Your admin password is stored in the <strong>Settings</strong> tab of your spreadsheet (cell B2, next to <code class="bg-yellow-100 px-1 rounded">password</code>). Change it there any time — it takes effect the next time someone unlocks the Admin panel.
+                Your admin password is stored in the <strong>Settings</strong> tab of your spreadsheet, in column B beside the row labelled <code class="bg-yellow-100 px-1 rounded">password</code>, and running <code class="bg-yellow-100 px-1 rounded">showCredentials()</code> in the Apps Script editor prints it for you. Change it in the sheet any time — it takes effect the next time someone unlocks the Admin panel.
             </p>
             <p class="text-sm text-yellow-800">
                 Share this password only with staff who should have admin access.
@@ -391,6 +452,61 @@ if (VT_ENV) {
 </div>
 
 <script>
+let claimedPassword = "";
+
+async function claimSetup() {
+    const url    = localStorage.getItem(vtKey("vocational_backend_url"));
+    const code   = document.getElementById("claimInput").value.trim();
+    const btn    = document.getElementById("claimBtn");
+    const status = document.getElementById("claimStatus");
+
+    if (!code) return;
+
+    btn.disabled = true;
+    btn.textContent = "Claiming…";
+    status.classList.add("hidden");
+
+    const fail = msg => {
+        btn.disabled = false;
+        btn.textContent = "Claim password";
+        status.innerText = msg;
+        status.classList.remove("hidden");
+    };
+
+    let json;
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "claimSetup", claim: code })
+        });
+        json = await res.json();
+    } catch (err) {
+        return fail("Could not reach the backend. Check your connection and try again.");
+    }
+
+    if (json.status !== "success") {
+        return fail(json.message || "That claim code is not valid.");
+    }
+
+    claimedPassword = json.password;
+    document.getElementById("claimPassword").textContent = claimedPassword;
+    document.getElementById("claimPanel").classList.add("hidden");
+    document.getElementById("claimResult").classList.remove("hidden");
+}
+
+function copyClaimPassword() {
+    if (!claimedPassword) return;
+
+    navigator.clipboard.writeText(claimedPassword).then(() => {
+        const btn = document.getElementById("claimCopyBtn");
+        btn.innerHTML = '<span class="material-icons align-middle text-sm mr-1">check</span> Copied';
+        setTimeout(() => {
+            btn.innerHTML = '<span class="material-icons align-middle text-sm mr-1">content_copy</span> Copy password';
+        }, 2000);
+    });
+}
+
 function nextStep(step) {
     document.getElementById("step" + step).classList.remove("active");
     document.getElementById("step" + step).classList.add("hidden-step");
@@ -435,7 +551,10 @@ async function connectBackend() {
         status.innerText = "✓ Connected successfully!";
         status.className = "text-green-600 font-bold";
 
-        nextStep(5);
+        // Don't advance yet -- the claim step lives here, because it is
+        // the only moment the password can be shown.
+        document.getElementById("claimPanel").classList.remove("hidden");
+        document.getElementById("claimInput").focus();
 
     } catch (err) {
         status.innerText = "Connection failed. Double-check your Exec URL and try again.";
