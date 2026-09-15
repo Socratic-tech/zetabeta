@@ -241,7 +241,8 @@ if (VT_ENV) {
             <div>
                 <div class="font-semibold text-slate-700">Create the first administrator</div>
                 <div class="text-sm text-slate-500">
-                    Enter your name and use the sidebar's first-admin setup control.
+                    Enter your name and school email address, then use the sidebar's first-admin setup control.
+                    The tracker will email your personal code automatically.
                 </div>
             </div>
         </div>
@@ -251,17 +252,17 @@ if (VT_ENV) {
             <div>
                 <div class="font-semibold text-slate-700">Copy your personal admin code</div>
                 <div class="text-sm text-slate-500">
-                    The code is shown once. Save it in a secure password manager or another
-                    approved secure location.
+                    The code is shown once in the sidebar and emailed to the address you provided.
+                    Save it in a secure password manager or another approved secure location.
                 </div>
             </div>
         </div>
 
         <div class="callout-warn p-3 text-sm text-amber-800 mt-4">
-            <strong>Your code cannot be recovered.</strong>
-            Only a one-way hash is stored. If you lose the code, a spreadsheet administrator
-            can issue you a new one from the Setup &amp; Credentials sidebar without changing
-            anyone else's admin code.
+            <strong>Your code cannot be recovered from the tracker.</strong>
+            Only a one-way hash is stored in the spreadsheet. The emailed copy may remain in your
+            mailbox. If the code is lost, a spreadsheet administrator can issue you a new one from
+            the Setup &amp; Credentials sidebar without changing anyone else's admin code.
         </div>
 
         <div class="callout p-3 text-sm text-blue-800 mt-4">
@@ -401,7 +402,7 @@ if (VT_ENV) {
                 <h3 class="font-bold text-slate-800 mb-2">Before going live</h3>
                 <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
                     <li>Add your real students, job sites, and tasks.</li>
-                    <li>Add viewer codes only for staff who need Reports but are not administrators.</li>
+                    <li>Add report-only viewers by name and email; their access code is emailed automatically.</li>
                     <li>Add additional administrators only when they need admin-level access; admins automatically inherit report access.</li>
                     <li>Generate a fresh entry QR and test one sample submission.</li>
                     <li>Confirm a viewer can open Reports but cannot reach Admin.</li>
