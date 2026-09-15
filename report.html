@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocational Progress Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        body { background-color: #f8fafc; font-family: ui-sans-serif, system-ui; }
+
+        @media print {
+            @page { size: landscape; margin: 0.5cm; }
+            nav, .no-print, #filterBar { display: none !important; }
+            #reportContainer { max-width: 100%; padding: 0; }
+            body { background: white !important; }
+        }
+
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+    </style>
+</head>
+
+<body class="flex flex-col min-h-screen">
+
+<!-- NAV -->
+<nav class="bg-blue-900 text-white shadow-lg no-print">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-yellow-400">analytics</span>
+                <span class="font-bold text-xl">Vocational Reports</span>
+            </div>
+            <div class="flex gap-4">
+                <a href="index.html" class="hover:bg-blue-800 px-3 py-2 rounded">Entry</a>
+                <a href="admin.html" class="hover:bg-blue-800 px-3 py-2 rounded">Admin</a>
+                <a href="faq.html" class="hover:bg-blue-800 px-3 py-2 rounded flex items-center gap-1">
+                    <span class="material-icons text-sm">help_outline</span>Help
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- VIEWER CODE GATE -->
+<div id="viewerGate"
+     class="fixed inset-0 bg-slate-100 z-50 hidden flex-col items-center justify-center px-4">
+    <div class="bg-white p-8 rounded-xl shadow-md border w-full max-w-sm">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-icons text-blue-900">lock</span>
+            <h2 class="font-bold text-xl text-slate-800">Reports Access</h2>
+        </div>
+        <p class="text-sm text-slate-500 mb-4">
+            Enter your access code. Your program coordinator issues these.
+        </p>
+        <input id="viewerCodeInput" type="password" autocomplete="off"
+               class="w-full border rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="Access code">
+        <p id="viewerGateMsg" class="text-sm text-red-600 mb-3 hidden"></p>
+        <button id="viewerUnlockBtn" onclick="verifyViewerCode()"
+                class="w-full bg-blue-900 text-white py-2 rounded-lg hover:bg-blue-800 transition">
+            View Reports
+        </button>
+    </div>
+</div>
+
+<!-- LOADING -->
+<div id="loadingIndicator"
+     class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+    <p class="text-slate-500">Loading Database…</p>
+</div>
+
+<!-- MAIN -->
+<main id="mainContent" class="hidden max-w-7xl mx-auto w-full py-8 px-4">
+
+    <!-- FILTER BAR -->
+    <div id="filterBar" class="bg-white p-6 rounded-xl shadow-sm border mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+
+            <div class="md:col-span-3">
+                <label class="text-xs font-bold uppercase text-slate-500 block mb-1">Student</label>
+                <select id="studentSelect" onchange="handleStudentChange()"
+                        class="w-full p-2.5 border rounded-lg">
+                    <option value="">-- Select Student --</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="text-xs font-bold uppercase text-slate-500 block mb-1">Start Date</label>
+                <input type="date" id="startDate" onchange="runReport()"
+                       class="w-full p-2.5 border rounded-lg">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="text-xs font-bold uppercase text-slate-500 block mb-1">End Date</label>
+                <input type="date" id="endDate" onchange="runReport()"
+                       class="w-full p-2.5 border rounded-lg">
+            </div>
+
+            <div class="md:col-span-3">
+                <label class="text-xs font-bold uppercase text-slate-500 block mb-1">Job Site</label>
+                <select id="siteSelect" onchange="runReport()" disabled
+                        class="w-full p-2.5 border rounded-lg">
+                    <option value="All">All Sites</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-2">
+                <button onclick="window.print()"
+                        class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-bold">
+                    Print
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- REPORT BODY -->
+    <div id="reportContainer" class="hidden space-y-10">
+
+        <!-- HEADER CARD -->
+        <div class="bg-white rounded-xl shadow-sm border p-6 flex flex-col md:flex-row justify-between gap-6">
+            <div>
+                <h1 id="reportStudentName" class="text-4xl font-extrabold text-slate-900 mb-2"></h1>
+                <p><strong>Report Period:</strong> <span id="reportPeriod"></span></p>
+                <p><strong>Site Filter:</strong> <span id="reportSiteFilter"></span></p>
+                <p><strong>Total Evaluations:</strong> <span id="reportCount"></span></p>
+            </div>
+            <div class="bg-slate-50 border rounded-xl p-6 text-center w-full md:w-64">
+                <p class="text-xs uppercase mb-2 tracking-wide">Overall Average</p>
+                <div id="overallScoreDisplay" class="text-5xl font-black text-slate-300">N/A</div>
+                <p class="text-xs mt-2 text-slate-400">Scale: 0–4</p>
+            </div>
+        </div>
+
+        <!-- SCORING KEY -->
+        <div class="bg-blue-50 rounded-xl border border-blue-100 p-4">
+            <h3 class="text-xs font-bold uppercase text-blue-800 mb-3 text-center">Scoring Key</h3>
+            <div class="grid grid-cols-5 gap-1 text-center text-[11px]">
+                <div><span class="font-bold text-red-500 text-base">0</span><div class="text-slate-600 mt-1">Not at All</div></div>
+                <div><span class="font-bold text-orange-500 text-base">1</span><div class="text-slate-600 mt-1">Direct Prompting</div></div>
+                <div><span class="font-bold text-yellow-600 text-base">2</span><div class="text-slate-600 mt-1">Indirect Prompting</div></div>
+                <div><span class="font-bold text-blue-500 text-base">3</span><div class="text-slate-600 mt-1">Independent</div></div>
+                <div><span class="font-bold text-green-600 text-base">4</span><div class="text-slate-600 mt-1">Helping/Teaching</div></div>
+            </div>
+        </div>
+
+        <!-- BEHAVIORAL SKILLS CHART -->
+        <div class="bg-white rounded-xl shadow-sm border p-5">
+            <h3 class="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
+                <span class="material-icons text-purple-500 text-sm">psychology</span>
+                Behavioral Skills Performance
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Average score across all evaluations in this period</p>
+            <canvas id="skillsChart" class="h-80"></canvas>
+        </div>
+
+        <!-- BEHAVIORAL SKILLS GRID -->
+        <div id="skillGrid" class="grid grid-cols-1 md:grid-cols-4 gap-4"></div>
+
+        <!-- JOB TASKS SECTION (shown only when task scores exist) -->
+        <div id="tasksSection" class="hidden space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border p-5">
+                <h3 class="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
+                    <span class="material-icons text-orange-500 text-sm">assignment</span>
+                    Job Tasks Performance
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Average score for site-specific tasks in this period</p>
+                <canvas id="tasksChart" class="h-64"></canvas>
+            </div>
+            <div id="tasksGrid" class="grid grid-cols-1 md:grid-cols-4 gap-4"></div>
+        </div>
+
+        <!-- EVALUATION HISTORY -->
+        <div class="bg-white rounded-xl shadow-sm border p-6">
+            <h3 class="text-xl font-bold text-slate-700 mb-4">Evaluation History (All Records)</h3>
+            <div class="overflow-auto">
+                <table class="min-w-full text-sm border border-slate-200">
+                    <thead class="bg-slate-100 text-slate-600 border-b">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Date</th>
+                            <th class="px-3 py-2 text-left">Job Site</th>
+                            <th class="px-3 py-2 text-left">Evaluator</th>
+                            <th class="px-3 py-2 text-left">Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SIGNATURE BLOCK -->
+        <div class="bg-white rounded-xl shadow-sm border p-6">
+            <h3 class="text-xl font-bold text-slate-700 mb-6">Signatures</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div>
+                    <p class="text-sm mb-2 font-semibold text-slate-700">Student Signature:</p>
+                    <div class="border-b border-slate-400 h-10"></div>
+                </div>
+                <div>
+                    <p class="text-sm mb-2 font-semibold text-slate-700">Employer Signature:</p>
+                    <div class="border-b border-slate-400 h-10"></div>
+                </div>
+                <div>
+                    <p class="text-sm mb-2 font-semibold text-slate-700">Date:</p>
+                    <div class="border-b border-slate-400 h-10"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script>
+/************************************************************
+ * SKILL MAP (behavioral)
+ ************************************************************/
+const SKILL_MAP = {
+    "Punctual": "Punctual",
+    "Prepared with Necessary Materials": "Prepared",
+    "Demonstrates appropriate hygiene/dress": "Hygiene/Dress",
+    "Initiates familiar tasks": "Task Initiation",
+    "Maintains a productive work rate": "Work Rate",
+    "Complete tasks in a logical order": "Logical Order",
+    "Demonstrates adaptability": "Adaptability",
+    "Work is completed to quality standards": "Quality Standards",
+    "Maintains clean and organized work space": "Clean Workspace",
+    "Awareness of surroundings and good decision making": "Awareness/Safety",
+    "Appropriate and respectful social interactions": "Social Interactions",
+    "Displays effective communication skills": "Communication",
+    "Accepts constructive criticism": "Constructive Criticism",
+    "Demonstrates a positive attitude": "Positive Attitude",
+    "Asks for help appropriately": "Asks for Help",
+    "Demonstrates self-reflection": "Self-Reflection"
+};
+
+const SKILLS = Object.keys(SKILL_MAP);
+
+let allEntries = [];
+let allTasks   = {}; // { site_name: [task, ...] }
+let students   = {};
+let charts     = { skills: null, tasks: null };
+
+const API_URL = localStorage.getItem("vocational_backend_url");
+
+/************************************************************
+ * DATE HELPERS
+ ************************************************************/
+function safeDate(str) {
+    if (!str) return null;
+    if (str.includes("-")) {
+        const d = new Date(str);
+        return isNaN(d) ? null : d;
+    }
+    const p = str.split("/");
+    if (p.length === 3) {
+        const d = new Date(parseInt(p[2]), parseInt(p[0]) - 1, parseInt(p[1]));
+        return isNaN(d) ? null : d;
+    }
+    return null;
+}
+
+function fmt(d) { return d.toLocaleDateString("en-US"); }
+
+/************************************************************
+ * VIEWER ACCESS
+ *
+ * The code is held in sessionStorage only, so it dies with the
+ * tab. It is never written to localStorage -- a shared device
+ * must not retain report access after the window closes.
+ ************************************************************/
+function getViewerCode() {
+    return sessionStorage.getItem("vt_viewer_code") || "";
+}
+
+function showGate(msg) {
+    document.getElementById("loadingIndicator").classList.add("hidden");
+    const gate = document.getElementById("viewerGate");
+    gate.classList.remove("hidden");
+    gate.classList.add("flex");
+    if (msg) {
+        const el = document.getElementById("viewerGateMsg");
+        el.textContent = msg;
+        el.classList.remove("hidden");
+    }
+    document.getElementById("viewerCodeInput").focus();
+}
+
+function hideGate() {
+    const gate = document.getElementById("viewerGate");
+    gate.classList.add("hidden");
+    gate.classList.remove("flex");
+}
+
+/**
+ * POSTs as text/plain so the browser treats it as a simple
+ * request. Apps Script serves no OPTIONS handler, so anything
+ * that triggers a CORS preflight fails outright.
+ */
+async function postAction(action, payload) {
+    const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+    });
+    return await res.json();
+}
+
+async function verifyViewerCode() {
+    const btn   = document.getElementById("viewerUnlockBtn");
+    const input = document.getElementById("viewerCodeInput");
+    const msg   = document.getElementById("viewerGateMsg");
+    const code  = input.value.trim();
+
+    if (!code) return;
+
+    btn.disabled = true;
+    btn.textContent = "Checking\u2026";
+    msg.classList.add("hidden");
+
+    try {
+        const json = await postAction("verifyViewer", { code: code });
+
+        if (json.status === "success") {
+            sessionStorage.setItem("vt_viewer_code", code);
+            hideGate();
+            document.getElementById("loadingIndicator").classList.remove("hidden");
+            loadReportData();
+            return;
+        }
+
+        msg.textContent = json.message || "That code was not recognized.";
+        msg.classList.remove("hidden");
+
+    } catch (err) {
+        console.error("Verify error:", err);
+        msg.textContent = "Could not reach the database. Check your connection.";
+        msg.classList.remove("hidden");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "View Reports";
+    input.select();
+}
+
+/************************************************************
+ * INITIAL LOAD
+ ************************************************************/
+window.onload = () => {
+    if (!API_URL) return alert("Database not configured.");
+
+    document.getElementById("viewerCodeInput")
+        .addEventListener("keydown", e => {
+            if (e.key === "Enter") verifyViewerCode();
+        });
+
+    if (!getViewerCode()) return showGate();
+    loadReportData();
+};
+
+async function loadReportData() {
+    try {
+        // One gated call. Student names and tasks come back with the
+        // entries rather than from separate open routes -- there are no
+        // open routes left to fetch them from.
+        const eJson = await postAction("getEntries", { code: getViewerCode() });
+
+        // A revoked or edited code shows up here, not just at unlock time.
+        if (eJson.status !== "success") {
+            sessionStorage.removeItem("vt_viewer_code");
+            return showGate(eJson.message || "Your access code is no longer valid.");
+        }
+
+        const sJson = { data: eJson.students };
+        const tJson = { data: eJson.tasks };
+
+        // Students
+        const sel = document.getElementById("studentSelect");
+        sJson.data.forEach(s => {
+            students[s.student_id] = s.name;
+            sel.innerHTML += `<option value="${s.student_id}">${s.name}</option>`;
+        });
+
+        // Entries
+        allEntries = eJson.data;
+
+        // Tasks lookup
+        allTasks = {};
+        (tJson.data || []).forEach(t => {
+            if (!allTasks[t.site_name]) allTasks[t.site_name] = [];
+            allTasks[t.site_name].push(t.task_name);
+        });
+
+        document.getElementById("loadingIndicator").classList.add("hidden");
+        document.getElementById("mainContent").classList.remove("hidden");
+
+    } catch (err) {
+        console.error("Load error:", err);
+        alert("Failed to load data.");
+    }
+}
+
+/************************************************************
+ * STUDENT CHANGE
+ ************************************************************/
+function handleStudentChange() {
+    const sid = document.getElementById("studentSelect").value;
+    const siteSel = document.getElementById("siteSelect");
+
+    siteSel.innerHTML = `<option value="All">All Sites</option>`;
+    siteSel.disabled = !sid;
+
+    if (!sid) {
+        document.getElementById("reportContainer").classList.add("hidden");
+        return;
+    }
+
+    const entries = allEntries.filter(e => e.student_id === sid);
+    [...new Set(entries.map(e => e.job_site))].sort()
+        .forEach(site => siteSel.innerHTML += `<option value="${site}">${site}</option>`);
+
+    runReport();
+}
+
+/************************************************************
+ * RUN REPORT
+ ************************************************************/
+function runReport() {
+    const sid = document.getElementById("studentSelect").value;
+    if (!sid) return;
+
+    const siteFilter = document.getElementById("siteSelect").value;
+    const startVal   = document.getElementById("startDate").value;
+    const endVal     = document.getElementById("endDate").value;
+
+    const startD = startVal ? new Date(startVal) : new Date("2000-01-01");
+    const endD   = endVal   ? new Date(endVal)   : new Date("2100-01-01");
+
+    const filtered = allEntries.filter(e => {
+        if (e.student_id !== sid) return false;
+        const d = safeDate(e.date);
+        if (!d || d < startD || d > endD) return false;
+        if (siteFilter !== "All" && e.job_site !== siteFilter) return false;
+        return true;
+    });
+
+    let period = "All Time";
+    if (startVal && endVal) period = `${fmt(new Date(startVal))} – ${fmt(new Date(endVal))}`;
+    else if (startVal)      period = `Since ${fmt(new Date(startVal))}`;
+    else if (endVal)        period = `Until ${fmt(new Date(endVal))}`;
+
+    updateUI(filtered, students[sid], period, siteFilter);
+    populateHistory(sid);
+}
+
+/************************************************************
+ * UPDATE UI
+ ************************************************************/
+function updateUI(entries, name, period, siteFilter) {
+    document.getElementById("reportContainer").classList.remove("hidden");
+    document.getElementById("reportStudentName").innerText = name;
+    document.getElementById("reportPeriod").innerText = period;
+    document.getElementById("reportSiteFilter").innerText = siteFilter;
+    document.getElementById("reportCount").innerText = entries.length;
+
+    // --- BEHAVIORAL SKILLS ---
+    const skillSums = {}, skillCounts = {};
+    SKILLS.forEach(k => { skillSums[k] = 0; skillCounts[k] = 0; });
+
+    entries.forEach(e => {
+        SKILLS.forEach(k => {
+            const v = Number(e.scores?.[k]);
+            if (!isNaN(v)) { skillSums[k] += v; skillCounts[k]++; }
+        });
+    });
+
+    const skillAvgs = SKILLS.map(k => skillCounts[k] ? skillSums[k] / skillCounts[k] : 0);
+
+    // --- JOB TASKS ---
+    // Collect all task keys seen across filtered entries (prefix "task:")
+    const taskKeySet = new Set();
+    entries.forEach(e => {
+        Object.keys(e.scores || {}).forEach(k => {
+            if (k.startsWith("task:")) taskKeySet.add(k);
+        });
+    });
+    const taskKeys = [...taskKeySet].sort();
+
+    // Build reverse lookup: task name → site name
+    const taskSiteMap = {};
+    Object.entries(allTasks).forEach(([site, tasks]) => {
+        tasks.forEach(t => { taskSiteMap[t] = site; });
+    });
+
+    const taskLabels = taskKeys.map(k => {
+        const name = k.replace(/^task:/, "");
+        const site = taskSiteMap[name];
+        return site ? `${name} (${site})` : name;
+    });
+
+    const taskSums = {}, taskCounts = {};
+    taskKeys.forEach(k => { taskSums[k] = 0; taskCounts[k] = 0; });
+
+    entries.forEach(e => {
+        taskKeys.forEach(k => {
+            const v = Number(e.scores?.[k]);
+            if (!isNaN(v)) { taskSums[k] += v; taskCounts[k]++; }
+        });
+    });
+
+    const taskAvgs = taskKeys.map(k => taskCounts[k] ? taskSums[k] / taskCounts[k] : 0);
+
+    // --- OVERALL AVERAGE (skills + tasks combined) ---
+    const allAvgs = [...skillAvgs, ...taskAvgs].filter(v => v > 0);
+    const overall = allAvgs.length ? allAvgs.reduce((a, b) => a + b) / allAvgs.length : 0;
+
+    const el = document.getElementById("overallScoreDisplay");
+    el.innerText = overall ? overall.toFixed(2) : "N/A";
+    el.className = "text-5xl font-black " +
+        (overall >= 3.5 ? "text-green-600" :
+         overall >= 2.5 ? "text-blue-600" :
+         overall >= 1.5 ? "text-yellow-600" :
+                          "text-red-600");
+
+    drawSkillChart(skillAvgs);
+    drawSkillGrid(skillAvgs, skillCounts);
+
+    if (taskKeys.length > 0) {
+        document.getElementById("tasksSection").classList.remove("hidden");
+        drawTaskChart(taskLabels, taskAvgs);
+        drawTaskGrid(taskLabels, taskAvgs, taskCounts);
+    } else {
+        document.getElementById("tasksSection").classList.add("hidden");
+        if (charts.tasks) { charts.tasks.destroy(); charts.tasks = null; }
+    }
+}
+
+/************************************************************
+ * BEHAVIORAL SKILLS CHART + GRID
+ ************************************************************/
+function drawSkillChart(avgs) {
+    if (charts.skills) charts.skills.destroy();
+    charts.skills = new Chart(document.getElementById("skillsChart"), {
+        type: "bar",
+        data: {
+            labels: SKILLS.map(k => SKILL_MAP[k]),
+            datasets: [{
+                label: "Avg Score",
+                data: avgs,
+                backgroundColor: avgs.map(v =>
+                    v >= 3 ? "#16a34a" : v >= 2 ? "#ca8a04" : v > 0 ? "#dc2626" : "#e5e7eb")
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } },
+                   scales: { y: { min: 0, max: 4 } } }
+    });
+}
+
+function drawSkillGrid(avgs, counts) {
+    const grid = document.getElementById("skillGrid");
+    grid.innerHTML = "";
+    SKILLS.forEach((k, i) => {
+        const avg = counts[k] ? avgs[i].toFixed(1) : "N/A";
+        const color = avg >= 3 ? "bg-green-100 text-green-700" :
+                      avg >= 2 ? "bg-yellow-100 text-yellow-700" :
+                      avg >  0 ? "bg-red-100 text-red-700" :
+                                 "bg-slate-100 text-slate-500";
+        grid.innerHTML += `
+            <div class="p-4 rounded-xl border shadow-sm ${color}">
+                <p class="font-bold text-sm">${SKILL_MAP[k]}</p>
+                <p class="text-2xl font-extrabold">${avg}</p>
+                <p class="text-xs mt-1">${counts[k] || 0} logs</p>
+            </div>`;
+    });
+}
+
+/************************************************************
+ * JOB TASKS CHART + GRID
+ ************************************************************/
+function drawTaskChart(labels, avgs) {
+    if (charts.tasks) charts.tasks.destroy();
+    charts.tasks = new Chart(document.getElementById("tasksChart"), {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [{
+                label: "Avg Score",
+                data: avgs,
+                backgroundColor: avgs.map(v =>
+                    v >= 3 ? "#16a34a" : v >= 2 ? "#ca8a04" : v > 0 ? "#dc2626" : "#e5e7eb")
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } },
+                   scales: { y: { min: 0, max: 4 } } }
+    });
+}
+
+function drawTaskGrid(labels, avgs, counts) {
+    const grid = document.getElementById("tasksGrid");
+    grid.innerHTML = "";
+
+    // Build reverse lookup for grid cards
+    const taskSiteMap = {};
+    Object.entries(allTasks).forEach(([site, tasks]) => {
+        tasks.forEach(t => { taskSiteMap[t] = site; });
+    });
+
+    labels.forEach((label, i) => {
+        // label already includes "(Site)" from chart — extract raw task name for key lookup
+        const rawName = label.replace(/ \(.*\)$/, "");
+        const key = `task:${rawName}`;
+        const site = taskSiteMap[rawName] || "";
+        const avg = counts[key] ? avgs[i].toFixed(1) : "N/A";
+        const color = avg >= 3 ? "bg-green-100 text-green-700" :
+                      avg >= 2 ? "bg-yellow-100 text-yellow-700" :
+                      avg >  0 ? "bg-red-100 text-red-700" :
+                                 "bg-slate-100 text-slate-500";
+        grid.innerHTML += `
+            <div class="p-4 rounded-xl border shadow-sm ${color} border-l-4 border-l-orange-300">
+                <p class="font-bold text-sm">${rawName}</p>
+                ${site ? `<p class="text-xs text-slate-400 mb-1">(${site})</p>` : ""}
+                <p class="text-2xl font-extrabold">${avg}</p>
+                <p class="text-xs mt-1">${counts[key] || 0} logs</p>
+            </div>`;
+    });
+}
+
+/************************************************************
+ * EVALUATION HISTORY
+ ************************************************************/
+function populateHistory(studentId) {
+    const body = document.getElementById("historyTableBody");
+    body.innerHTML = "";
+
+    allEntries
+        .filter(e => e.student_id === studentId)
+        .sort((a, b) => safeDate(a.date) - safeDate(b.date))
+        .forEach(e => {
+            body.innerHTML += `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-3 py-2">${fmt(safeDate(e.date))}</td>
+                    <td class="px-3 py-2">${e.job_site}</td>
+                    <td class="px-3 py-2">${e.evaluator}</td>
+                    <td class="px-3 py-2">${e.comments || ""}</td>
+                </tr>`;
+        });
+}
+</script>
+
+</body>
+</html>
