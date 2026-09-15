@@ -9,6 +9,39 @@
     <style>
         .score-btn { transition: all 0.2s ease; }
     </style>
+<script>
+/************************************************************
+ * INSTANCE NAMESPACE
+ *
+ * GitHub Pages serves every repo under one origin, and localStorage
+ * is scoped to the origin, not the path. Without this, the beta and
+ * production copies fight over the same storage slots -- scan beta's
+ * QR and the device silently repoints, with no visible difference.
+ *
+ * TO PROMOTE THIS BUILD TO PRODUCTION: set VT_ENV to "".
+ * That is the whole diff. It drops the prefix and the banner.
+ ************************************************************/
+const VT_ENV = "beta";
+
+function vtKey(name) { return VT_ENV ? VT_ENV + ":" + name : name; }
+
+if (VT_ENV) {
+    document.addEventListener("DOMContentLoaded", function () {
+        var css = document.createElement("style");
+        css.textContent =
+            ".vt-env-banner{position:sticky;top:0;z-index:9999;background:#b45309;" +
+            "color:#fff;font:600 12px/1.3 ui-sans-serif,system-ui;padding:8px 12px;" +
+            "text-align:center;letter-spacing:.05em;text-transform:uppercase}" +
+            "@media print{.vt-env-banner{display:none!important}}";
+        document.head.appendChild(css);
+
+        var bar = document.createElement("div");
+        bar.className = "vt-env-banner";
+        bar.textContent = VT_ENV + " instance \u2014 test data only, not production";
+        document.body.prepend(bar);
+    });
+}
+</script>
 </head>
 
 <body class="bg-slate-100 text-slate-900 font-sans pb-20">
@@ -190,10 +223,10 @@ function resolveApiUrl() {
     const params = new URLSearchParams(window.location.search);
     const paramUrl = params.get("db");
     if (paramUrl) {
-        localStorage.setItem("vocational_backend_url", paramUrl);
+        localStorage.setItem(vtKey("vocational_backend_url"), paramUrl);
         return paramUrl;
     }
-    return localStorage.getItem("vocational_backend_url") || null;
+    return localStorage.getItem(vtKey("vocational_backend_url")) || null;
 }
 
 /**
@@ -206,10 +239,10 @@ function resolveEntryToken() {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("t");
     if (t) {
-        localStorage.setItem("vt_entry_token", t);
+        localStorage.setItem(vtKey("vt_entry_token"), t);
         return t;
     }
-    return localStorage.getItem("vt_entry_token") || null;
+    return localStorage.getItem(vtKey("vt_entry_token")) || null;
 }
 
 let ENTRY_TOKEN = null;
