@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocational Entry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .score-btn { transition: all 0.2s ease; }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-slate-900 font-sans pb-20">
+
+<!-- NAVBAR -->
+<nav class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center gap-6 text-sm font-semibold">
+                <a href="index.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons text-yellow-400">home</span>
+                    Dashboard
+                </a>
+                <a href="#" class="flex items-center gap-1 text-yellow-300 font-bold">
+                    <span class="material-icons">edit_note</span>
+                    Entry
+                </a>
+                <a href="report.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">analytics</span>
+                    Reports
+                </a>
+                <a href="admin.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">admin_panel_settings</span>
+                    Admin
+                </a>
+                <a href="faq.html" class="flex items-center gap-1 hover:text-yellow-300 transition">
+                    <span class="material-icons">help_outline</span>
+                    Help
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- NOT CONFIGURED MESSAGE -->
+<div id="notConfigured" class="hidden max-w-xl mx-auto mt-16 px-6">
+    <div class="bg-white rounded-2xl shadow-md border border-red-100 p-8 text-center">
+        <span class="material-icons text-red-400 text-5xl mb-4 block">link_off</span>
+        <h2 class="text-xl font-bold text-slate-800 mb-2">Database Not Configured</h2>
+        <p class="text-slate-500 text-sm mb-6">
+            This form needs a special link to connect to the data system.<br>
+            Please ask your program coordinator for the correct QR code or link.
+        </p>
+        <div class="bg-slate-50 rounded-lg p-4 text-left text-xs text-slate-400 font-mono break-all">
+            Expected URL format:<br>
+            <span class="text-blue-500">entry.html?db=https://script.google.com/...</span>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN FORM -->
+<div id="mainForm" class="hidden max-w-3xl mx-auto px-4 py-6">
+
+    <!-- DB source badge -->
+    <div id="dbBadge" class="mb-3 flex items-center gap-2 text-xs text-slate-400">
+        <span class="material-icons text-sm text-green-500">cloud_done</span>
+        <span id="dbBadgeText">Connected</span>
+    </div>
+
+    <form id="entryForm" onsubmit="submitEntry(event)" class="space-y-6">
+
+        <!-- STUDENT SECTION -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2">
+                <span class="material-icons text-blue-600">person</span> Student Details
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Student Name</label>
+                    <select id="studentSelect" required class="w-full p-3 border rounded-lg bg-slate-50">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Job Site</label>
+                    <select id="siteSelect" required onchange="handleSiteChange()"
+                            class="w-full p-3 border rounded-lg bg-slate-50">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Date</label>
+                    <input type="date" id="dateInput" required class="w-full p-3 border rounded-lg bg-slate-50">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Evaluator</label>
+                    <input type="text" id="evaluatorInput" placeholder="Your Name" required
+                           class="w-full p-3 border rounded-lg bg-slate-50">
+                </div>
+            </div>
+        </div>
+
+        <!-- SCORING KEY -->
+        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <h3 class="text-xs font-bold uppercase text-blue-800 mb-3 text-center">Scoring Key</h3>
+            <div class="grid grid-cols-5 gap-1 text-center text-[10px]">
+                <div><span class="font-bold text-red-500">0</span><div>Not at All</div></div>
+                <div><span class="font-bold text-orange-500">1</span><div>Direct Prompting</div></div>
+                <div><span class="font-bold text-yellow-600">2</span><div>Indirect Prompting</div></div>
+                <div><span class="font-bold text-blue-500">3</span><div>Independent</div></div>
+                <div><span class="font-bold text-green-600">4</span><div>Helping/Teaching</div></div>
+            </div>
+        </div>
+
+        <!-- JOB TASKS (shown only when selected site has tasks) -->
+        <div id="tasksSection" class="hidden bg-white p-5 rounded-xl shadow-sm border border-orange-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-6 border-b pb-2 flex items-center gap-2">
+                <span class="material-icons text-orange-500">assignment</span>
+                Job Tasks
+                <span id="tasksSiteName" class="text-sm font-normal text-slate-400 ml-1"></span>
+            </h2>
+            <div id="tasksContainer" class="space-y-6"></div>
+        </div>
+
+        <!-- BEHAVIORAL SKILLS -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border">
+            <h2 class="text-lg font-bold text-slate-800 mb-6 border-b pb-2 flex items-center gap-2">
+                <span class="material-icons text-purple-600">psychology</span> Behavioral Skills
+            </h2>
+            <div id="skillsContainer" class="space-y-6"></div>
+        </div>
+
+        <!-- NOTES -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2">
+                <span class="material-icons text-slate-600">note</span> Notes
+            </h2>
+            <textarea id="commentsInput" rows="3"
+                      placeholder="Specific details about today's performance..."
+                      class="w-full p-3 border rounded-lg bg-slate-50"></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg 
+                       transition flex justify-center items-center gap-2 text-lg">
+            <span class="material-icons">send</span>
+            SUBMIT ENTRY
+        </button>
+
+    </form>
+</div>
+
+<script>
+/************************************************************
+ * CONSTANTS + STATE
+ ************************************************************/
+const SKILLS_LIST = [
+    "Punctual", "Prepared with Necessary Materials", "Demonstrates appropriate hygiene/dress",
+    "Initiates familiar tasks", "Maintains a productive work rate", "Complete tasks in a logical order",
+    "Demonstrates adaptability", "Work is completed to quality standards",
+    "Maintains clean and organized work space", "Awareness of surroundings and good decision making",
+    "Appropriate and respectful social interactions", "Displays effective communication skills",
+    "Accepts constructive criticism", "Demonstrates a positive attitude",
+    "Asks for help appropriately", "Demonstrates self-reflection"
+];
+
+const SCORE_STYLES = {
+    0:    "bg-red-500 text-white border-red-600",
+    1:    "bg-orange-500 text-white border-orange-600",
+    2:    "bg-yellow-500 text-white border-yellow-600",
+    3:    "bg-blue-500 text-white border-blue-600",
+    4:    "bg-green-600 text-white border-green-700",
+    null: "bg-slate-300 text-slate-700 border-slate-400"
+};
+
+const INACTIVE = "bg-slate-50 text-slate-400 border-slate-200";
+
+let skillScores = {};   // keyed by "skill:SkillName" or "task:TaskName"
+let allTasks    = {};   // { site_name: [task, ...] }
+let currentTasks = [];  // tasks for currently selected site
+let API_URL = null;
+
+/************************************************************
+ * RESOLVE API URL
+ ************************************************************/
+function resolveApiUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get("db");
+    if (paramUrl) {
+        localStorage.setItem("vocational_backend_url", paramUrl);
+        return paramUrl;
+    }
+    return localStorage.getItem("vocational_backend_url") || null;
+}
+
+/**
+ * The entry token rides in the QR code as ?t=. It grants exactly two
+ * things: read the dropdowns, submit an entry. It cannot read a single
+ * score. Cached so a para who loses signal mid-shift can reopen the
+ * page from history without re-scanning.
+ */
+function resolveEntryToken() {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("t");
+    if (t) {
+        localStorage.setItem("vt_entry_token", t);
+        return t;
+    }
+    return localStorage.getItem("vt_entry_token") || null;
+}
+
+let ENTRY_TOKEN = null;
+
+/**
+ * text/plain keeps this a "simple" CORS request. Apps Script serves no
+ * OPTIONS handler, so anything that triggers a preflight fails outright.
+ * Note there is no mode:"no-cors" here -- we need to read the reply.
+ */
+async function postAction(action, payload) {
+    const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+    });
+    return await res.json();
+}
+
+function showLinkExpired(msg) {
+    const box = document.getElementById("notConfigured");
+    box.classList.remove("hidden");
+    box.scrollIntoView({ behavior: "smooth" });
+    const p = box.querySelector("p");
+    if (p) p.textContent = msg;
+    document.getElementById("mainForm").classList.add("hidden");
+}
+
+/************************************************************
+ * INIT
+ ************************************************************/
+window.onload = () => {
+    API_URL = resolveApiUrl();
+
+    if (!API_URL) {
+        document.getElementById("notConfigured").classList.remove("hidden");
+        return;
+    }
+
+    ENTRY_TOKEN = resolveEntryToken();
+
+    if (!ENTRY_TOKEN) {
+        return showLinkExpired(
+            "This link is missing its access code. Scan the QR code your coordinator provided."
+        );
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("dbBadgeText").textContent = params.get("db")
+        ? "Connected via QR/link"
+        : "Connected (saved on this device)";
+
+    document.getElementById("mainForm").classList.remove("hidden");
+    document.getElementById("dateInput").valueAsDate = new Date();
+    renderSkills();
+    loadDropdowns();
+};
+
+/************************************************************
+ * SHARED SCORE GROUP RENDERER
+ * allowNA=true adds an N/A button and defaults score to null
+ ************************************************************/
+function renderScoreGroup(container, label, key, allowNA = false) {
+    skillScores[key] = allowNA ? null : 2;
+
+    const safeId = key.replace(/[^a-zA-Z0-9]/g, "_");
+
+    let html = `
+        <div>
+            <label class="block text-sm font-bold mb-2">${label}</label>
+            <div class="grid grid-cols-6 gap-2">
+    `;
+    for (let i = 0; i <= 4; i++) {
+        html += `
+            <button type="button"
+                    id="btn_${safeId}_${i}"
+                    onclick="setScore('${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${i})"
+                    class="score-btn py-3 rounded-lg border font-bold text-lg shadow-sm">
+                ${i}
+            </button>
+        `;
+    }
+    if (allowNA) {
+        html += `
+            <button type="button"
+                    id="btn_${safeId}_null"
+                    onclick="setScore('${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', null)"
+                    class="score-btn py-3 rounded-lg border font-bold text-xs shadow-sm">
+                N/A
+            </button>
+        `;
+    } else {
+        // Placeholder to keep grid alignment on behavioral skills (5 cols only)
+        html = html.replace('grid-cols-6', 'grid-cols-5');
+    }
+    html += "</div></div>";
+    container.innerHTML += html;
+    updateButtons(key);
+}
+
+/************************************************************
+ * BEHAVIORAL SKILLS
+ ************************************************************/
+function renderSkills() {
+    const container = document.getElementById("skillsContainer");
+    container.innerHTML = "";
+    SKILLS_LIST.forEach(skill => renderScoreGroup(container, skill, `skill:${skill}`));
+}
+
+/************************************************************
+ * JOB TASKS
+ ************************************************************/
+function renderTasks(tasks) {
+    const section   = document.getElementById("tasksSection");
+    const container = document.getElementById("tasksContainer");
+    const siteLabel = document.getElementById("tasksSiteName");
+
+    // Clear previous task scores
+    currentTasks.forEach(t => delete skillScores[`task:${t}`]);
+    container.innerHTML = "";
+    currentTasks = tasks;
+
+    if (!tasks || tasks.length === 0) {
+        section.classList.add("hidden");
+        return;
+    }
+
+    siteLabel.textContent = `— ${document.getElementById("siteSelect").value}`;
+    section.classList.remove("hidden");
+    tasks.forEach(task => renderScoreGroup(container, task, `task:${task}`, true));
+}
+
+/************************************************************
+ * SCORE MANAGEMENT
+ ************************************************************/
+function setScore(key, score) {
+    skillScores[key] = score;
+    updateButtons(key);
+}
+
+function updateButtons(key) {
+    const selected = skillScores[key];
+    const safeId = key.replace(/[^a-zA-Z0-9]/g, "_");
+
+    // Update numeric buttons 0-4
+    for (let i = 0; i <= 4; i++) {
+        const btn = document.getElementById(`btn_${safeId}_${i}`);
+        if (!btn) continue;
+        btn.className = (selected === i)
+            ? `score-btn py-3 rounded-lg border font-bold text-lg shadow-md ${SCORE_STYLES[i]}`
+            : `score-btn py-3 rounded-lg border font-bold text-lg shadow-sm ${INACTIVE}`;
+    }
+
+    // Update N/A button if present
+    const naBtn = document.getElementById(`btn_${safeId}_null`);
+    if (naBtn) {
+        naBtn.className = (selected === null)
+            ? `score-btn py-3 rounded-lg border font-bold text-xs shadow-md ${SCORE_STYLES[null]}`
+            : `score-btn py-3 rounded-lg border font-bold text-xs shadow-sm ${INACTIVE}`;
+    }
+}
+
+/************************************************************
+ * DROPDOWNS
+ ************************************************************/
+async function loadDropdowns() {
+    try {
+        const boot = await postAction("entryBootstrap", { token: ENTRY_TOKEN });
+
+        if (boot.status !== "success") {
+            return showLinkExpired(boot.message || "This entry link is no longer valid.");
+        }
+
+        const sJson = { data: boot.students };
+        const jJson = { data: boot.sites };
+        const tJson = { data: boot.tasks };
+
+        // Students
+        const sSel = document.getElementById("studentSelect");
+        sSel.innerHTML = `<option value="">Select Student…</option>`;
+        sJson.data.forEach(s => {
+            sSel.innerHTML += `<option value="${s.student_id}">${s.name}</option>`;
+        });
+
+        // Sites
+        const siteSel = document.getElementById("siteSelect");
+        siteSel.innerHTML = `<option value="">Select Site…</option>`;
+        jJson.data.forEach(site => {
+            siteSel.innerHTML += `<option value="${site}">${site}</option>`;
+        });
+
+        // Task lookup by site
+        allTasks = {};
+        (tJson.data || []).forEach(t => {
+            if (!allTasks[t.site_name]) allTasks[t.site_name] = [];
+            allTasks[t.site_name].push(t.task_name);
+        });
+
+    } catch (err) {
+        console.error("Dropdown load error:", err);
+        alert("Connected but failed to load data. Check the script URL.");
+    }
+}
+
+function handleSiteChange() {
+    const site = document.getElementById("siteSelect").value;
+    renderTasks(site ? (allTasks[site] || []) : []);
+}
+
+/************************************************************
+ * SUBMIT
+ ************************************************************/
+async function submitEntry(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById("submitBtn");
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-icons animate-spin">refresh</span> Saving…`;
+
+    // Combine behavioral skills + job tasks into one scores object
+    // N/A tasks (null) are excluded entirely — not recorded in the sheet
+    const scores = {};
+    SKILLS_LIST.forEach(skill => {
+        scores[skill] = skillScores[`skill:${skill}`] ?? 2;
+    });
+    currentTasks.forEach(task => {
+        const val = skillScores[`task:${task}`];
+        if (val !== null && val !== undefined) {
+            scores[`task:${task}`] = val;
+        }
+    });
+
+    const payload = {
+        token: ENTRY_TOKEN,
+        student_id: document.getElementById("studentSelect").value,
+        job_site:   document.getElementById("siteSelect").value,
+        date:       document.getElementById("dateInput").value,
+        evaluator:  document.getElementById("evaluatorInput").value,
+        comments:   document.getElementById("commentsInput").value,
+        scores
+    };
+
+    // This used to post with mode:"no-cors", which made the response
+    // opaque -- the button turned green and said "Saved!" whether or not
+    // anything reached the sheet. With a revocable token that becomes a
+    // silent data-loss bug, so the failure has to be visible.
+    try {
+        const json = await postAction("addEntry", payload);
+
+        if (json.status !== "success") {
+            alert(json.message || "Save failed. Your entry was NOT recorded.");
+            btn.disabled = false;
+            btn.innerHTML = original;
+            return;
+        }
+
+        btn.innerHTML = `<span class="material-icons">check_circle</span> Saved!`;
+        btn.classList.replace("bg-blue-600", "bg-green-600");
+        setTimeout(() => location.reload(), 1000);
+
+    } catch (err) {
+        alert("Save failed - your entry was NOT recorded. Check your signal and try again.\n\n" + err);
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+</script>
+
+</body>
+</html>
